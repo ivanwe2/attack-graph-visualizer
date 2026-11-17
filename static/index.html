@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Минимално покриващо дърво – Крускал и Прим</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%2316a34a' stroke-width='3'%3E%3Cpath d='M16 7L7 25M16 7l9 18'/%3E%3C/g%3E%3Cg fill='%23bbf7d0' stroke='%2315803d' stroke-width='2'%3E%3Ccircle cx='16' cy='7' r='5'/%3E%3Ccircle cx='7' cy='25' r='5'/%3E%3Ccircle cx='25' cy='25' r='5'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/cytoscape.min.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Минимално покриващо дърво</h1>
+    <p>Как алгоритмите на Крускал и Прим строят дървото – стъпка по стъпка. Бонус: дърво на най-кратките пътища (Дейкстра).</p>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section>
+        <h2>1. Граф</h2>
+        <div class="row">
+          <select id="preset" aria-label="Готов пример"></select>
+          <button id="load-preset">Зареди</button>
+        </div>
+        <fieldset>
+          <legend>Случаен граф</legend>
+          <div class="row">
+            <label>Върхове <input id="rnd-n" type="number" min="1" max="40" value="8"></label>
+            <label>Плътност <input id="rnd-density" type="number" min="0" max="1" step="0.05" value="0.3"></label>
+            <label>Seed <input id="rnd-seed" type="number" value="1"></label>
+          </div>
+          <div class="row">
+            <label class="check"><input id="rnd-connected" type="checkbox" checked> свързан</label>
+            <button id="random">Генерирай</button>
+          </div>
+        </fieldset>
+        <div class="row">
+          <button id="import">Импорт JSON</button>
+          <button id="export">Експорт JSON</button>
+          <input id="import-file" type="file" accept=".json,application/json" hidden>
+        </div>
+        <div class="row">
+          <button id="layout">Подреди</button>
+          <button id="clear">Изчисти</button>
+        </div>
+        <details class="hint" open>
+          <summary>Редактиране</summary>
+          <ul>
+            <li>Клик върху празно място – нов връх</li>
+            <li>Клик върху два върха – ново ребро</li>
+            <li>Клик върху ребро – ново тегло</li>
+            <li>Десен клик (или Delete за избран връх) – изтриване</li>
+            <li>Върховете се местят с влачене</li>
+          </ul>
+        </details>
+      </section>
+
+      <section>
+        <h2>2. Алгоритъм</h2>
+        <select id="algorithm" aria-label="Алгоритъм">
+          <option value="kruskal">Крускал</option>
+          <option value="prim">Прим</option>
+          <option value="dijkstra">Дейкстра (най-кратки пътища)</option>
+        </select>
+        <label class="stack">Начален връх (Прим, Дейкстра) <select id="start"></select></label>
+        <div class="row">
+          <button id="run" class="primary">Стартирай</button>
+          <button id="compare">Сравни Крускал и Прим</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="graph-panel">
+      <div id="status" class="status"></div>
+      <div id="banner" class="banner" hidden></div>
+      <dl class="stats">
+        <div><dt>Общо тегло</dt><dd id="st-total">–</dd></div>
+        <div><dt>Разгледани ребра</dt><dd id="st-examined">–</dd></div>
+        <div><dt id="checks-label">Проверки за цикъл</dt><dd id="st-checks">–</dd></div>
+        <div><dt>Компоненти</dt><dd id="st-comp">–</dd></div>
+      </dl>
+      <div class="canvas">
+        <div id="cy"></div>
+        <ul class="legend">
+          <li><span class="sw accepted"></span>прието ребро</li>
+          <li><span class="sw rejected"></span>отхвърлено ребро</li>
+          <li><span class="sw frontier"></span>кандидат</li>
+          <li><span class="sw current"></span>текуща стъпка</li>
+          <li><span class="dot tree"></span>връх в дървото</li>
+          <li><span class="dot comp"></span>компонента (Крускал)</li>
+        </ul>
+      </div>
+      <div class="player">
+        <div class="controls">
+          <button id="first" title="Начало">⏮</button>
+          <button id="back" title="Стъпка назад (←)">◀</button>
+          <button id="play" title="Пусни / пауза (интервал)">▶</button>
+          <button id="forward" title="Стъпка напред (→)">▶|</button>
+          <button id="last" title="Край">⏭</button>
+        </div>
+        <label class="speed">Скорост <input id="speed" type="range" min="1" max="10" value="6"></label>
+        <span id="step-label" class="muted">Няма изпълнение</span>
+      </div>
+    </section>
+
+    <aside class="right">
+      <section class="tree-panel">
+        <h2>Дърво <label class="inline">корен <select id="root"></select></label></h2>
+        <div id="tree"></div>
+        <p id="tree-hint" class="muted">Полученото дърво се показва тук в края на изпълнението.</p>
+      </section>
+      <section class="list-panel">
+        <h2 id="list-title">Ребра</h2>
+        <ol id="edge-list" class="edge-list"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <div class="bottom">
+    <section class="log-panel">
+      <h2>Стъпки <span class="muted">(клик върху ред – отиди на стъпката)</span></h2>
+      <ol id="log" class="log"></ol>
+    </section>
+    <section id="compare-panel" class="compare-panel" hidden>
+      <h2>Сравнение</h2>
+      <div class="totals">
+        <div><span>Крускал</span><strong id="cmp-kruskal"></strong></div>
+        <div><span id="cmp-prim-label">Прим</span><strong id="cmp-prim"></strong></div>
+      </div>
+      <p id="cmp-verdict"></p>
+      <table>
+        <thead><tr><th>#</th><th>Крускал</th><th>Прим</th></tr></thead>
+        <tbody id="cmp-rows"></tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>
