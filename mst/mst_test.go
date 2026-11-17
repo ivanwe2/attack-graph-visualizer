@@ -218,6 +218,8 @@ func TestRunErrors(t *testing.T) {
 		{"duplicate vertex", makeGraph("A A"), "kruskal", ""},
 		{"edge to unknown vertex", makeGraph("A", Edge{"A", "Q", 1}), "kruskal", ""},
 		{"negative weight for dijkstra", makeGraph("A B", Edge{"A", "B", -1}), "dijkstra", "A"},
+		{"vertex id too long", makeGraph(strings.Repeat("x", MaxIDLength+1)), "kruskal", ""},
+		{"too many vertices", randomGraph(rand.New(rand.NewSource(1)), MaxNodes+1, 0), "kruskal", ""},
 	}
 	for _, tc := range tests {
 		if _, err := Run(tc.g, tc.algorithm, tc.start); err == nil {

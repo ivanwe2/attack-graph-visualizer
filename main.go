@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"time"
 
 	"mst-demo/mst"
 )
@@ -46,8 +47,17 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	// http.ListenAndServe has no timeouts, so a slow client could hold a
+	// connection open forever. A Server value lets us set them.
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+	}
 	log.Printf("MST demo: http://localhost:%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(srv.ListenAndServe())
 }
 
 func handleRun(w http.ResponseWriter, r *http.Request) {

@@ -229,8 +229,11 @@ ignores them.
   a snapshot: `order` (Kruskal's sorted edges), `comp` (union-find root of every vertex),
   `frontier` (candidate edges) or `dist` (Dijkstra's distances).
 - Invalid input (unknown vertex, duplicate id, unknown algorithm, negative weight for
-  Dijkstra, malformed JSON) returns HTTP 400 with `{"error": "…"}`. Limits are 200
-  vertices and 2000 edges.
+  Dijkstra, malformed JSON) returns HTTP 400 with `{"error": "…"}`.
+- Limits: 100 vertices, 1000 edges, vertex ids up to 32 bytes, request body up to 1 MB.
+  Every step carries a snapshot (components, frontier or distances), so a run's response
+  grows roughly like (V+E)·V. These limits keep even the worst case at a few MB. The
+  server also has read/write timeouts.
 
 ---
 

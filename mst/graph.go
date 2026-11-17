@@ -7,10 +7,14 @@ import (
 	"fmt"
 )
 
-// Size limits keep a single request small (every step carries a snapshot).
+// Size limits. Every step carries a snapshot of up to V entries (component
+// roots, frontier, distances keyed by vertex ID) and a run has about V+E
+// steps, so the response grows like (V+E)·V·len(ID). These limits keep the
+// worst case at a few MB.
 const (
-	MaxNodes = 200
-	MaxEdges = 2000
+	MaxNodes    = 100
+	MaxEdges    = 1000
+	MaxIDLength = 32 // bytes
 )
 
 // Node is a vertex. X and Y only remember where the UI drew it.
@@ -99,6 +103,9 @@ func (g Graph) validate() error {
 	for _, n := range g.Nodes {
 		if n.ID == "" {
 			return errors.New("връх без име")
+		}
+		if len(n.ID) > MaxIDLength {
+			return fmt.Errorf("твърде дълго име на връх (най-много %d байта)", MaxIDLength)
 		}
 		if seen[n.ID] {
 			return fmt.Errorf("повтарящ се връх %q", n.ID)
